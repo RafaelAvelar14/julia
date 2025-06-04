@@ -28,6 +28,10 @@ using std::atomic_fetch_and;
 using std::atomic_fetch_and_explicit;
 using std::atomic_fetch_or;
 using std::atomic_fetch_or_explicit;
+using std::atomic_fetch_sub;
+using std::atomic_fetch_sub_explicit;
+using std::atomic_fetch_xor;
+using std::atomic_fetch_xor_explicit;
 using std::atomic_compare_exchange_strong;
 using std::atomic_compare_exchange_strong_explicit;
 using std::atomic_exchange;
@@ -138,6 +142,17 @@ T jl_atomic_fetch_add_explicit(std::atomic<T> *ptr, S val, std::memory_order ord
 }
 #define jl_atomic_fetch_add_relaxed(ptr, val) jl_atomic_fetch_add_explicit(ptr, val, memory_order_relaxed)
 template<class T, class S>
+T jl_atomic_fetch_sub(std::atomic<T> *ptr, S val)
+{
+     return std::atomic_fetch_sub<T>(ptr, val);
+}
+template<class T, class S>
+T jl_atomic_fetch_sub_explicit(std::atomic<T> *ptr, S val, std::memory_order order)
+{
+     return std::atomic_fetch_sub_explicit<T>(ptr, val, order);
+}
+#define jl_atomic_fetch_sub_relaxed(ptr, val) jl_atomic_fetch_sub_explicit(ptr, val, memory_order_relaxed)
+template<class T, class S>
 T jl_atomic_fetch_and(std::atomic<T> *ptr, S val)
 {
      return std::atomic_fetch_and<T>(ptr, val);
@@ -159,6 +174,17 @@ T jl_atomic_fetch_or_explicit(std::atomic<T> *ptr, S val, std::memory_order orde
      return std::atomic_fetch_or_explicit<T>(ptr, val, order);
 }
 #define jl_atomic_fetch_or_relaxed(ptr, val) jl_atomic_fetch_or_explicit(ptr, val, memory_order_relaxed)
+template<class T, class S>
+T jl_atomic_fetch_xor(std::atomic<T> *ptr, S val)
+{
+     return std::atomic_fetch_xor<T>(ptr, val);
+}
+template<class T, class S>
+T jl_atomic_fetch_xor_explicit(std::atomic<T> *ptr, S val, std::memory_order order)
+{
+     return std::atomic_fetch_xor_explicit<T>(ptr, val, order);
+}
+#define jl_atomic_fetch_xor_relaxed(ptr, val) jl_atomic_fetch_xor_explicit(ptr, val, memory_order_relaxed)
 template<class T, class S>
 bool jl_atomic_cmpswap(std::atomic<T> *ptr, T *expected, S val)
 {

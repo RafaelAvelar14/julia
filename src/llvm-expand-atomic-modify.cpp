@@ -304,17 +304,52 @@ static std::variant<AtomicRMWInst::BinOp,bool> patternMatchAtomicRMWOp(Value *Ol
     }
     return false;
   }
-  else if (auto Intr = dyn_cast<CallInst>(RetVal)) {
-    // TODO: decide inlining cost of Op, or check alwaysinline/inlinehint, before this?
-    for (auto &Arg : Intr->args()) {
-      if (Arg == Old) {
-        if (canReorderWithRMW(*Intr, verifyop)) {
-          if (ValOp) *ValOp = &Arg;
-          return true;
+  else if (auto Call = dyn_cast<CallInst>(RetVal)) {
+    // Handle binary operation pattern first
+    if (Call->arg_size() == 2) {
+      Value *Arg0 = Call->getArgOperand(0);
+      Value *Arg1 = Call->getArgOperand(1);
+      bool Arg0IsOld = (Arg0 == Old);
+      bool Arg1IsOld = (Arg1 == Old);
+
+      if ((Arg0IsOld || Arg1IsOld) && canReorderWithRMW(*Call, verifyop)) {
+        // Determine which operand is the value
+        if (ValOp) {
+          *ValOp = &Call->getOperandUse(Arg0IsOld ? 1 : 0);
         }
-        return false;
+
+        // Check if we have a known function
+        Function *Callee = Call->getCalledFunction();
+        if (!Callee || Callee->isDeclaration()) {
+          return false;
+        }
+
+        // Map function names to atomic operations
+        StringRef Name = Callee->getName();
+        static const std::pair<StringRef, AtomicRMWInst::BinOp> OpMap[] = {
+          {"+", AtomicRMWInst::Add},
+          {"-", AtomicRMWInst::Sub},
+          {"&", AtomicRMWInst::And},
+          {"|", AtomicRMWInst::Or},
+          {"xor", AtomicRMWInst::Xor}
+        };
+
+        for (const auto &Mapping : OpMap) {
+          if (Name.contains(Mapping.first)) {
+            return Mapping.second;
+          }
+        }
       }
     }
+
+    // Generic call handling - check if any argument matches Old
+    for (auto &Arg : Call->args()) {
+      if (Arg == Old && canReorderWithRMW(*Call, verifyop)) {
+        if (ValOp) *ValOp = &Arg;
+        return true;
+      }
+    }
+    return false;
   }
   // TODO: does this need to deal with F->hasFnAttribute(Attribute::StrictFP)?
   // TODO: does Fneg and Neg have expansions?
